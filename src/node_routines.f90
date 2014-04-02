@@ -97,6 +97,8 @@ MODULE NODE_ROUTINES
   PUBLIC NODES_NUMBER_OF_NODES_GET
   
   PUBLIC NODES_USER_NUMBER_GET,NODES_USER_NUMBER_SET
+  
+  PUBLIC Nodes_UserNumbersAllSet
 
   !PUBLIC NODES_NUMBER_OF_VERSIONS_SET
 
@@ -851,6 +853,73 @@ CONTAINS
    
   END SUBROUTINE NODES_USER_NUMBER_SET
 
+  !
+  !================================================================================================================================
+  !
+
+  !>Changes/sets the user numbers for all nodes. \see OPENCMISS::CMISSNodes_UserNumbersAllSet
+  SUBROUTINE Nodes_UserNumbersAllSet(nodes,userNumbers,err,error,*)
+
+    !Argument variables
+    TYPE(NODES_TYPE), POINTER :: nodes !<A pointer to the nodes to set the numbers for
+    INTEGER(INTG), INTENT(IN) :: userNumbers(:) !<The user numbers to set
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: nodeIdx,insertStatus
+    TYPE(TREE_TYPE), POINTER :: newNodesTree
+    TYPE(VARYING_STRING) :: localError
+
+    NULLIFY(newNodesTree)
+    
+    CALL ENTERS("Nodes_UserNumbersAllSet",err,error,*999)
+
+    IF(ASSOCIATED(nodes)) THEN
+      IF(nodes%NODES_FINISHED) THEN
+        CALL FlagError("Nodes have been finished.",err,error,*999)
+      ELSE
+        IF(nodes%NUMBER_OF_NODES==SIZE(userNumbers,1)) THEN
+          !Check the users numbers to ensure that there are no duplicates                    
+          CALL TREE_CREATE_START(newNodesTree,err,error,*999)
+          CALL TREE_INSERT_TYPE_SET(newNodesTree,TREE_NO_DUPLICATES_ALLOWED,err,error,*999)
+          CALL TREE_CREATE_FINISH(newNodesTree,err,error,*999)
+          DO nodeIdx=1,nodes%NUMBER_OF_NODES
+            CALL TREE_ITEM_INSERT(newNodesTree,userNumbers(nodeIdx),nodeIdx,insertStatus,err,error,*999)
+            IF(insertStatus/=TREE_NODE_INSERT_SUCESSFUL) THEN
+              localError="The specified user number of "//TRIM(NumberToVstring(userNumbers(nodeIdx),"*",err,error))// &
+                & " for global node number "//TRIM(NumberToVstring(nodeIdx,"*",err,error))// &
+                & " is a duplicate. The user node numbers must be unique."
+              CALL FlagError(localError,err,error,*999)
+            ENDIF
+          ENDDO !nodeIdx
+          CALL TREE_DESTROY(nodes%NODES_TREE,err,error,*999)
+          nodes%NODES_TREE=>newNodesTree
+          NULLIFY(newNodesTree)
+          DO nodeIdx=1,nodes%NUMBER_OF_NODES
+            nodes%NODES(nodeIdx)%GLOBAL_NUMBER=nodeIdx
+            nodes%NODES(nodeIdx)%USER_NUMBER=userNumbers(nodeIdx)
+          ENDDO !nodesIdx
+        ELSE
+          localError="The number of specified node user numbers ("// &
+            TRIM(NumberToVstring(SIZE(userNumbers,1),"*",err,error))// &
+            ") does not match number of nodes ("// &
+            TRIM(NumberToVstring(nodes%NUMBER_OF_NODES,"*",err,error))//")."
+          CALL FlagError(localError,err,error,*999)
+        ENDIF
+      ENDIF
+    ELSE
+      CALL FlagError("Nodes is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL EXITS("Nodes_UserNumbersAllSet")
+    RETURN
+999 IF(ASSOCIATED(newNodesTree)) CALL TREE_DESTROY(newNodesTree,err,error,*998)
+998 CALL ERRORS("Nodes_UserNumbersAllSet",err,error)    
+    CALL EXITS("Nodes_UserNumbersAllSet")
+    RETURN 1
+   
+  END SUBROUTINE Nodes_UserNumbersAllSet
+  
   !
   !================================================================================================================================
   !

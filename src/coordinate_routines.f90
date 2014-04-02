@@ -167,8 +167,7 @@ MODULE COORDINATE_ROUTINES
   PUBLIC COORDINATE_SYSTEM_TYPE_STRING
 
   PUBLIC COORDINATE_CONVERT_FROM_RC,COORDINATE_CONVERT_TO_RC,COORDINATE_DELTA_CALCULATE,COORDINATE_DERIVATIVE_NORM, &
-    & COORDINATE_INTERPOLATION_ADJUST,COORDINATE_INTERPOLATION_PARAMETERS_ADJUST, &
-    & COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE,COORDINATE_METRICS_CALCULATE
+    & COORDINATE_INTERPOLATION_ADJUST,COORDINATE_INTERPOLATION_PARAMETERS_ADJUST,COORDINATE_METRICS_CALCULATE
   
   PUBLIC COORDINATE_SYSTEM_DIMENSION_GET,COORDINATE_SYSTEM_DIMENSION_SET
 
@@ -191,6 +190,8 @@ MODULE COORDINATE_ROUTINES
   PUBLIC COORDINATE_SYSTEM_USER_NUMBER_FIND
   
   PUBLIC COORDINATE_SYSTEMS_INITIALISE,COORDINATE_SYSTEMS_FINALISE
+
+  PUBLIC CoordinateMaterialSystemCalculate
   
 CONTAINS
 
@@ -238,13 +239,13 @@ CONTAINS
     CASE(COORDINATE_SPHERICAL_POLAR_TYPE)
       IF(COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS==3) THEN
         COORDINATE_CONVERT_FROM_RC_DP(1)=SQRT(Z(1)**2+Z(2)**2+Z(3)**2)
-        IF(Z(1)/=0.0_DP.OR.Z(2)/=0.0_DP) THEN
+        IF(ABS(Z(1))>=ZERO_TOLERANCE.OR.ABS(Z(2))>=ZERO_TOLERANCE) THEN
           COORDINATE_CONVERT_FROM_RC_DP(2)=ATAN2(Z(2),Z(1))
         ELSE
           COORDINATE_CONVERT_FROM_RC_DP(2)=0.0_DP
         ENDIF
         A1=SQRT(Z(1)**2+Z(2)**2)
-        IF(Z(3)/=0.0_DP.OR.A1/=0.0_DP) THEN
+        IF(ABS(Z(3))>=ZERO_TOLERANCE.OR.ABS(A1)>=ZERO_TOLERANCE) THEN
           COORDINATE_CONVERT_FROM_RC_DP(3)=ATAN2(Z(3),A1)
         ELSE
           COORDINATE_CONVERT_FROM_RC_DP(3)=0.0_DP
@@ -268,7 +269,7 @@ CONTAINS
           A8=0.0_DP
           CALL FLAG_WARNING("Put A8=0 since ABS(A8)>1.",ERR,ERROR,*999)
         ENDIF
-        IF((Z(3)==0.0_DP).OR.(A6==0.0_DP).OR.(A7==0.0_DP)) THEN
+        IF((ABS(Z(3))<ZERO_TOLERANCE).OR.(ABS(A6)<ZERO_TOLERANCE).OR.(ABS(A7)<ZERO_TOLERANCE)) THEN
           A9=0.0_DP
         ELSE
           IF(ABS(A6*A7)>0.0_DP) THEN
@@ -286,12 +287,12 @@ CONTAINS
           ENDIF
         ENDIF
         COORDINATE_CONVERT_FROM_RC_DP(1)=LOG(A6+SQRT(A4+1.0_DP))
-        IF(Z(1)>=0.0_DP) THEN
+        IF(ABS(Z(1))>=ZERO_TOLERANCE) THEN
           COORDINATE_CONVERT_FROM_RC_DP(2)=A8
         ELSE
           COORDINATE_CONVERT_FROM_RC_DP(2)=PI-A8
         ENDIF
-        IF(Z(2)>=0.0_DP) THEN
+        IF(ABS(Z(2))>ZERO_TOLERANCE) THEN
           COORDINATE_CONVERT_FROM_RC_DP(3)=MOD(A9+2.0_DP*PI,2.0_DP*PI)
         ELSE
           COORDINATE_CONVERT_FROM_RC_DP(3)=PI-A9
@@ -358,13 +359,13 @@ CONTAINS
     CASE(COORDINATE_SPHERICAL_POLAR_TYPE)
       IF(COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS==3) THEN
         COORDINATE_CONVERT_FROM_RC_SP(1)=SQRT(Z(1)**2+Z(2)**2+Z(3)**2)
-        IF(Z(1)/=0.0_SP.OR.Z(2)/=0.0_SP) THEN
+        IF(ABS(Z(1))>=ZERO_TOLERANCE_SP.OR.ABS(Z(2))>ZERO_TOLERANCE_SP) THEN
           COORDINATE_CONVERT_FROM_RC_SP(2)=ATAN2(Z(2),Z(1))
         ELSE
           COORDINATE_CONVERT_FROM_RC_SP(2)=0.0_SP
         ENDIF
         A1=SQRT(Z(1)**2+Z(2)**2)
-        IF(Z(3)/=0.0_SP.OR.A1/=0.0_SP) THEN
+        IF(ABS(Z(3))>=ZERO_TOLERANCE_SP.OR.ABS(A1)>ZERO_TOLERANCE_SP) THEN
           COORDINATE_CONVERT_FROM_RC_SP(3)=ATAN2(Z(3),A1)
         ELSE
           COORDINATE_CONVERT_FROM_RC_SP(3)=0.0_SP
@@ -388,10 +389,10 @@ CONTAINS
           A8=0.0_SP
           CALL FLAG_WARNING("Put A8=0 since ABS(A8)>1.",ERR,ERROR,*999)
         ENDIF
-        IF((Z(3)==0.0_SP).OR.(A6==0.0_SP).OR.(A7==0.0_SP)) THEN
+        IF((ABS(Z(3))<ZERO_TOLERANCE_SP).OR.(ABS(A6)<ZERO_TOLERANCE_SP).OR.(ABS(A7)<ZERO_TOLERANCE_SP)) THEN
           A9=0.0_SP
         ELSE
-          IF(ABS(A6*A7)>0.0_SP) THEN
+          IF(ABS(A6*A7)>ZERO_TOLERANCE_SP) THEN
             A9=Z(3)/(FOCUS*A6*A7)
           ELSE
             A9=0.0_SP
@@ -406,12 +407,12 @@ CONTAINS
           ENDIF
         ENDIF
         COORDINATE_CONVERT_FROM_RC_SP(1)=LOG(A6+SQRT(A4+1.0_SP))
-        IF(Z(1)>=0.0_SP) THEN
+        IF(ABS(Z(1))>=ZERO_TOLERANCE_SP) THEN
           COORDINATE_CONVERT_FROM_RC_SP(2)=A8
         ELSE
           COORDINATE_CONVERT_FROM_RC_SP(2)=REAL(PI,SP)-A8
         ENDIF
-        IF(Z(2)>=0.0_SP) THEN
+        IF(ABS(Z(2))>=ZERO_TOLERANCE_SP) THEN
           COORDINATE_CONVERT_FROM_RC_SP(3)=MOD(A9+2.0_SP*REAL(PI,SP),2.0_SP*&
             & REAL(PI,SP))
         ELSE
@@ -656,7 +657,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: mi,ni,nu
-    REAL(DP) :: A(2,2),B(2),C,D,DET_GL,DET_DX_DXI,DX_DXI2(3),DX_DXI3(3),FF,G1,G3,LENGTH,MU,R,RC,RCRC,RR,SCALE
+    REAL(DP) :: DET_GL,DET_DX_DXI,DX_DXI2(3),DX_DXI3(3),FF,G1,G3,LENGTH,MU,R,RC,RCRC,RR,SCALE
     TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: INTERPOLATED_POINT
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
@@ -669,7 +670,7 @@ CONTAINS
         INTERPOLATED_POINT=>METRICS%INTERPOLATED_POINT
         IF(ASSOCIATED(INTERPOLATED_POINT)) THEN
           IF(INTERPOLATED_POINT%PARTIAL_DERIVATIVE_TYPE>=FIRST_PART_DERIV) THEN
-            
+
             SELECT CASE(METRICS%NUMBER_OF_XI_DIMENSIONS)
             CASE(1)
               !Calculate the derivatives of X with respect to XI
@@ -837,7 +838,7 @@ CONTAINS
                   DET_DX_DXI=METRICS%DX_DXI(1,1)*DX_DXI2(2)-METRICS%DX_DXI(2,1)*DX_DXI2(1)
                   IF(ABS(DET_DX_DXI)>ZERO_TOLERANCE) THEN
                     METRICS%DXI_DX(1,1)=DX_DXI2(2)/DET_DX_DXI
-                    METRICS%DXI_DX(1,2)=DX_DXI2(1)/DET_DX_DXI
+                    METRICS%DXI_DX(1,2)=-1.0_DP*DX_DXI2(1)/DET_DX_DXI
                     !Normalise to ensure that g^11=g^1.g^1
                     LENGTH=L2NORM(METRICS%DXI_DX(1,1:2))
                     SCALE=SQRT(ABS(METRICS%GU(1,1)))/LENGTH
@@ -855,60 +856,29 @@ CONTAINS
                     IF(ERR/=0) GOTO 999
                     !Calculate the bi-normal vector from the normalised cross product of the tangent and normal vectors
                     CALL NORM_CROSS_PRODUCT(METRICS%DX_DXI(1:3,1),DX_DXI2,DX_DXI3,ERR,ERROR,*999)
-                  ELSE
-                    !Solve system of equations to find g_2 and g_3 using g_3 = g_1 x g_2 and g_2 = g_3 x g_1
-                    !We need to choose a component of g_2 to fix this system. As we are going to normalise results
-                    !we don't need to worry about the value.
-                    !If we pick a component to set then we need to ensure that it is roughly orthogonal to the tangent
-                    !vector. Try the first component unless it is in the direction of the tangent else try the second
-                    C=METRICS%DX_DXI(1,1)/SQRT(METRICS%DX_DXI(1,1)**2+METRICS%DX_DXI(2,1)**2+METRICS%DX_DXI(3,1)**2)
-                    IF(ABS(C)>0.9_DP) THEN
-                      !Tangent has a significant first component, set the second component of g_2
-                      C=METRICS%DX_DXI(2,1)/SQRT(METRICS%DX_DXI(1,1)**2+METRICS%DX_DXI(2,1)**2+METRICS%DX_DXI(3,1)**2)
-                      D=1.0_DP/(1.0_DP-C)
-                      A(1,1)=METRICS%DX_DXI(2,1)*METRICS%DX_DXI(2,1)+METRICS%DX_DXI(3,1)*METRICS%DX_DXI(3,1)-1.0_DP
-                      A(1,2)=-1.0_DP*METRICS%DX_DXI(1,1)*METRICS%DX_DXI(3,1)
-                      A(2,1)=METRICS%DX_DXI(2,1)*METRICS%DX_DXI(3,1)
-                      A(2,2)=METRICS%DX_DXI(1,1)*METRICS%DX_DXI(1,1)+METRICS%DX_DXI(2,1)*METRICS%DX_DXI(2,1)-1.0_DP
-                      B(1)=-1.0_DP*METRICS%DX_DXI(1,1)*METRICS%DX_DXI(2,1)*D
-                      B(2)=METRICS%DX_DXI(2,1)*METRICS%DX_DXI(3,1)*D
-                      CALL SOLVE_SMALL_LINEAR_SYSTEM(A,DX_DXI2(1:2),B,ERR,ERROR,*999)
-                      DX_DXI2(3)=DX_DXI2(2)
-                      DX_DXI2(2)=D
+                    DET_DX_DXI=METRICS%DX_DXI(1,1)*(DX_DXI2(2)*DX_DXI3(3)-DX_DXI2(3)*DX_DXI3(2))+ &
+                      & DX_DXI2(1)*(METRICS%DX_DXI(3,1)*DX_DXI3(2)-DX_DXI3(3)*METRICS%DX_DXI(2,1))+ &
+                      & DX_DXI3(1)*(METRICS%DX_DXI(2,1)*DX_DXI2(3)-METRICS%DX_DXI(3,1)*DX_DXI2(2))
+                    IF(ABS(DET_DX_DXI)>ZERO_TOLERANCE) THEN
+                      METRICS%DXI_DX(1,1)=(DX_DXI3(3)*DX_DXI2(2)-DX_DXI2(3)*DX_DXI3(2))/DET_DX_DXI
+                      METRICS%DXI_DX(1,2)=-1.0_DP*(DX_DXI3(3)*DX_DXI2(1)-DX_DXI2(3)*DX_DXI3(1))/DET_DX_DXI
+                      METRICS%DXI_DX(1,3)=(DX_DXI3(2)*DX_DXI2(1)-DX_DXI2(2)*DX_DXI3(1))/DET_DX_DXI
+                      !Normalise to ensure that g^11=g^1.g^1
+                      LENGTH=L2NORM(METRICS%DXI_DX(1,1:3))
+                      SCALE=SQRT(ABS(METRICS%GU(1,1)))/LENGTH
+                      METRICS%DXI_DX(1,1:3)=SCALE*METRICS%DX_DXI(1,1:3)
                     ELSE
-                      !Tangent does not have a significant first component, set the first component of g_2
-                      D=1.0_DP/(1.0_DP-C)
-                      A(1,1)=METRICS%DX_DXI(1,1)*METRICS%DX_DXI(1,1)+METRICS%DX_DXI(3,1)*METRICS%DX_DXI(3,1)-1
-                      A(1,2)=METRICS%DX_DXI(2,1)*METRICS%DX_DXI(3,1)
-                      A(2,1)=-1.0_DP*METRICS%DX_DXI(2,1)*METRICS%DX_DXI(3,1)
-                      A(2,2)=METRICS%DX_DXI(1,1)*METRICS%DX_DXI(1,1)+METRICS%DX_DXI(2,1)*METRICS%DX_DXI(2,1)-1
-                      B(1)=METRICS%DX_DXI(1,1)*METRICS%DX_DXI(2,1)
-                      B(2)=-1.0_DP*METRICS%DX_DXI(1,1)*METRICS%DX_DXI(3,1)
-                      DX_DXI2(1)=D
-                      CALL SOLVE_SMALL_LINEAR_SYSTEM(A,DX_DXI2(2:3),B,ERR,ERROR,*999)
+                      CALL FLAG_WARNING("Zero determinant. Unable to obtain dxi/dx.",ERR,ERROR,*999)
+                      METRICS%DXI_DX=0.0_DP                    
                     ENDIF
-                    DX_DXI2=NORMALISE(DX_DXI2,ERR,ERROR)
-                    IF(ERR/=0) GOTO 999
-                    DX_DXI3(1)=METRICS%DX_DXI(2,1)*DX_DXI2(3)-DX_DXI2(2)*METRICS%DX_DXI(3,1)
-                    DX_DXI3(2)=METRICS%DX_DXI(3,1)*DX_DXI2(1)-DX_DXI2(3)*METRICS%DX_DXI(1,1)
-                    DX_DXI3(3)=METRICS%DX_DXI(1,1)*DX_DXI2(2)-DX_DXI2(1)*METRICS%DX_DXI(2,1)
-                    DX_DXI3=NORMALISE(DX_DXI3,ERR,ERROR)
-                    IF(ERR/=0) GOTO 999
-                  ENDIF
-                  DET_DX_DXI=METRICS%DX_DXI(1,1)*(DX_DXI2(2)*DX_DXI3(3)-DX_DXI2(3)*DX_DXI3(2))+ &
-                    & DX_DXI2(1)*(METRICS%DX_DXI(3,1)*DX_DXI3(2)-DX_DXI3(3)*METRICS%DX_DXI(2,1))+ &
-                    & DX_DXI3(1)*(METRICS%DX_DXI(2,1)*DX_DXI2(3)-METRICS%DX_DXI(3,1)*DX_DXI2(2))
-                  IF(ABS(DET_DX_DXI)>ZERO_TOLERANCE) THEN
-                    METRICS%DXI_DX(1,1)=(DX_DXI3(3)*DX_DXI2(2)-DX_DXI2(3)*DX_DXI3(2))/DET_DX_DXI
-                    METRICS%DXI_DX(1,2)=-1.0_DP*(DX_DXI3(3)*DX_DXI2(1)-DX_DXI2(3)*DX_DXI3(2))/DET_DX_DXI
-                    METRICS%DXI_DX(1,3)=(DX_DXI3(2)*DX_DXI2(1)-DX_DXI2(2)*DX_DXI3(1))/DET_DX_DXI
+                  ELSE
+                    METRICS%DXI_DX(1,1)=METRICS%DX_DXI(1,1)
+                    METRICS%DXI_DX(1,2)=METRICS%DX_DXI(2,1)
+                    METRICS%DXI_DX(1,3)=METRICS%DX_DXI(3,1)
                     !Normalise to ensure that g^11=g^1.g^1
                     LENGTH=L2NORM(METRICS%DXI_DX(1,1:3))
                     SCALE=SQRT(ABS(METRICS%GU(1,1)))/LENGTH
                     METRICS%DXI_DX(1,1:3)=SCALE*METRICS%DXI_DX(1,1:3)
-                  ELSE
-                    CALL FLAG_WARNING("Zero determinant. Unable to obtain dxi/dx.",ERR,ERROR,*999)
-                    METRICS%DXI_DX=0.0_DP                    
                   ENDIF
                 CASE DEFAULT
                   CALL FLAG_ERROR("Invalid embedding of a line in space.",ERR,ERROR,*999)
@@ -3286,7 +3256,7 @@ CONTAINS
         ENDIF
       CASE(COORDINATE_PROLATE_SPHEROIDAL_TYPE)
         IF(COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS==3) THEN
-          FOCUS=COORDINATE_SYSTEM%FOCUS
+          FOCUS=REAL(COORDINATE_SYSTEM%FOCUS,SP)
           SELECT CASE(PART_DERIV_TYPE)
           CASE(NO_PART_DERIV)
             Z=COORDINATE_CONVERT_TO_RC(COORDINATE_SYSTEM,X(:,1),ERR,ERROR)
@@ -3920,270 +3890,278 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
-!>Calculates transformation between spatial CS and rotated refernce orthogonal material CS.
-  SUBROUTINE COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE(GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT,DXDNU, &
-    & ERR,ERROR,*)
-
+ 
+  !>Calculates the tensor to get from material coordinate system, nu, to local coordinate system, xi.
+  SUBROUTINE CoordinateMaterialSystemCalculate(geometricInterpPointMetrics,fibreInterpPoint,dNudXi,dXidNu,err,error,*)
+  
     !Argument variables
-    TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT
-    REAL(DP),INTENT(OUT) :: DXDNU(:,:)
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(FIELD_INTERPOLATED_POINT_METRICS_TYPE), POINTER :: geometricInterpPointMetrics !<The geometric interpolation point metrics at the point to calculate the material coordinate system from.
+    TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: fibreInterpPoint !<The fibre interpolation point at the point to calculate the material coordinate system from
+    REAL(DP), INTENT(OUT) :: dNudXi(:,:) !<dNudXi(nuIdx,xiIdx). On return, the tensor to transform from the material system to the xi coordinate system
+    REAL(DP), INTENT(OUT) :: dXidNu(:,:) !<dXidNu(xiIdx,nuIdx). On return, the tensor to transform from the xi coordinate system to the material coordinate system
+    INTEGER(INTG), INTENT(OUT) :: err   !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) ::  error   !<The error string
+    !Local variables
+    INTEGER(INTG) :: numberOfXDimensions,numberOfXiDimensions,numberOfNuDimensions
+    REAL(DP) :: dXdNu(3,3),dNudX(3,3),dNudXiTemp(3,3),Jnuxi
+    TYPE(VARYING_STRING) :: localError 
+     
+    CALL Enters("CoordinateMaterialSystemCalculate",err,error,*999)
+    
+    IF(ASSOCIATED(geometricInterpPointMetrics)) THEN
+      
+      numberOfXDimensions=geometricInterpPointMetrics%NUMBER_OF_X_DIMENSIONS
+      numberOfXiDimensions=geometricInterpPointMetrics%NUMBER_OF_XI_DIMENSIONS
+      
+      !Calculate dX/dNu and its inverse dNu/dX (same as transpose due to orthogonality)
+      
+      !The fibre interpolated point might not be used for isotropic constitutive relations
+      IF(ASSOCIATED(fibreInterpPoint)) THEN
+        !We have a fibre field
+        numberOfNuDimensions=SIZE(fibreInterpPoint%values,1)
+        SELECT CASE(numberOfXDimensions)
+        CASE(1)
+          dXdNu(1,1)=1.0_DP
+        CASE(2)
+          CALL CoordinateMaterialSystemCalculatedXdNu2D(geometricInterpPointMetrics,fibreInterpPoint%values(1: &
+            & numberOfNuDimensions,1),dXdNu(1:numberOfXDimensions,1:numberOfXDimensions),err,error,*999)
+        CASE(3)
+          CALL CoordinateMaterialSystemCalculatedXdNu3D(geometricInterpPointMetrics,fibreInterpPoint%values(1: &
+            & numberOfNuDimensions,1),dXdNu(1:numberOfXDimensions,1:numberOfXDimensions),err,error,*999)
+        CASE DEFAULT
+          localError="The number of dimensions in the geometric interpolated point of "// &
+            & TRIM(NumberToVString(numberOfXDimensions,"*",err,error))// &
+            & " is invalid. The number of dimensions must be >= 1 and <= 3."
+          CALL FlagError(localError,err,error,*999)
+        END SELECT
+        !Calculate dNu/dX the inverse of dX/dNu (same as transpose due to orthogonality)
+        CALL MATRIX_TRANSPOSE(dXdNu(1:numberOfXDimensions,1:numberOfXDimensions),dNudX(1:numberOfXDimensions,1: &
+          & numberOfXDimensions),err,error,*999)
+        !Calculate dNu/dXi = dNu/dX * dX/dXi and its inverse dXi/dNu
+        CALL MATRIX_PRODUCT(dNudX(1:numberOfXDimensions,1:numberOfXDimensions), &
+          & geometricInterpPointMetrics%DX_DXI(1:numberOfXDimensions,1:numberOfXiDimensions), &
+          & dNudXiTemp(1:numberOfXDimensions,1:numberOfXiDimensions),err,error,*999)
+      ELSE
+        !No fibre field
+        numberOfNuDimensions=0
+        dNudXiTemp(1:numberOfXDimensions,1:numberOfXiDimensions)=geometricInterpPointMetrics%DX_DXI(1:numberOfXDimensions, &
+          & 1:numberOfXiDimensions)
+      ENDIF
 
-    INTEGER(INTG) :: NUMBER_OF_DIMENSIONS
+      CALL IdentityMatrix(dNudXi,err,error,*999)
+      dNudXi(1:numberOfXDimensions,1:numberOfXiDimensions)=dNudXiTemp(1:numberOfXDimensions,1:numberOfXiDimensions)
 
-    CALL ENTERS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE",ERR,ERROR,*999)
+      IF(numberOfXDimensions==numberOfXiDimensions) THEN
+        CALL Invert(dNudXi(1:numberOfXDimensions,1:numberOfXiDimensions),dXidNu(1:numberOfXiDimensions,1:numberOfXDimensions), &
+          & JNuXi,err,error,*999)
+      ELSE
+        CALL FlagError("Not implemented",err,error,*999)
+      ENDIF
 
-    NUMBER_OF_DIMENSIONS = GEOMETRIC_INTERPOLATED_POINT%INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
-
-    IF (NUMBER_OF_DIMENSIONS == 3) THEN
-      CALL COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_3D(GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT,DXDNU, &
-        & ERR,ERROR,*999)
+      IF(DIAGNOSTICS1) THEN
+        CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"",err,error,*999)
+        CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"Calculated material coordinate system:",err,error,*999)
+        CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  Number of X dimensions  = ",numberOfXDimensions,err,error,*999)
+        CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  Number of Xi dimensions = ",numberOfXiDimensions,err,error,*999)
+        CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  Number of Nu dimensions = ",numberOfNuDimensions,err,error,*999)
+        IF(numberOfNuDimensions>0) THEN
+          CALL WriteStringMatrix(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberOfXDimensions,1,1,numberOfXDimensions, &
+            & numberOfXDimensions,numberOfXDimensions,dXdNu,WRITE_STRING_MATRIX_NAME_AND_INDICES, &
+            & '("  dXdNu','(",I1,",:)','  :",3(X,E13.6))','(15X,3(X,E13.6))',err,error,*999)
+          CALL WriteStringMatrix(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberOfXDimensions,1,1,numberOfXDimensions, &
+            & numberOfXDimensions,numberOfXDimensions,dNudX,WRITE_STRING_MATRIX_NAME_AND_INDICES, &
+            & '("  dNudX','(",I1,",:)','  :",3(X,E13.6))','(15X,3(X,E13.6))',err,error,*999)
+        ENDIF
+        CALL WriteStringMatrix(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberOfXDimensions,1,1,numberOfXiDimensions, &
+          & numberOfXiDimensions,numberOfXiDimensions,dNudXi,WRITE_STRING_MATRIX_NAME_AND_INDICES, &
+          & '("  dNudXi','(",I1,",:)',' :",3(X,E13.6))','(15X,3(X,E13.6))',err,error,*999)
+        CALL WriteStringMatrix(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberOfXiDimensions,1,1,numberOfXDimensions, &
+          & numberOfXDimensions,numberOfXDimensions,dXidNu,WRITE_STRING_MATRIX_NAME_AND_INDICES, &
+          & '("  dXidNu','(",I1,",:)',' :",3(X,E13.6))','(15X,3(X,E13.6))',err,error,*999)
+        CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  Determinant JNuXi = ",JNuXi,err,error,*999)
+      ENDIF
+      
     ELSE
-      CALL COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D(GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT,DXDNU, &
-        & ERR,ERROR,*999)
-    END IF
-
-    CALL EXITS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE")
+      CALL FlagError("Geometric interpolated point metrics is not associated.",err,error,*999)
+    ENDIF    
+    
+    CALL Exits("CoordinateMaterialSystemCalculate")
     RETURN
-999 CALL ERRORS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE",ERR,ERROR)
-    CALL EXITS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE")
+999 CALL Errors("CoordinateMaterialSystemCalculate",err,error)
+    CALL Exits("CoordinateMaterialSystemCalculate")
     RETURN 1
-  END SUBROUTINE
+    
+  END SUBROUTINE CoordinateMaterialSystemCalculate
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Calculates transformation between spatial CS and rotated reference orthogonal material CS in 2D space
+  SUBROUTINE CoordinateMaterialSystemCalculatedXdNu2D(geometricInterpPointMetrics,angle,dXdNu,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_INTERPOLATED_POINT_METRICS_TYPE), POINTER :: geometricInterpPointMetrics !<The geometric interpolated point metrics at the point to calculate dXdNu at. 
+    REAL(DP), INTENT(IN) :: angle(:) !<angle(fibreIdx). The fibre angle (in radians) 
+    REAL(DP), INTENT(OUT) :: dXdNu(:,:) !<dXdNu(coordinateIdx,coordinateIdx). On exit, the dXdNu tensor.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    REAL(DP) :: dXdNuR(2,2),R(2,2)
+
+    CALL Enters("CoordinateMaterialSystemCalculatedXdNu2D",err,error,*999)
+
+    IF(ASSOCIATED(geometricInterpPointMetrics)) THEN
+    
+      !First calculate reference material CS
+      
+      !Reference material direction 1.
+      dXdNuR(:,1) = [ geometricInterpPointMetrics%DX_DXI(1,1),geometricInterpPointMetrics%DX_DXI(2,1) ]
+      
+      !Compute (normalised) vector orthogonal to material direction 1 to form material direction 2
+      dXdNuR(:,2) = [ -1.0_DP*dXdNuR(2,1),dXdNuR(1,1) ]
+      
+      dXdNuR(1:2,1) = Normalise(dXdNuR(1:2,1),err,error)
+      IF(err/=0) GOTO 999
+      dXdNuR(1:2,2) = Normalise(dXdNuR(1:2,2),err,error)
+      IF(err/=0) GOTO 999
+      
+      !Rotate by multiply with rotation matrix
+      R(:,1) = [ COS(angle(1)),-1.0_DP*SIN(angle(1)) ]
+      R(:,2) = [ SIN(angle(1)),COS(angle(1)) ]
+      
+      CALL MatrixProduct(R,dXdNuR,dXdNu,err,error,*999)
+      
+      dXdNu(1:2,1) = Normalise(dXdNu(1:2,1),err,error)
+      IF(ERR/=0) GOTO 999
+      dXdNu(1:2,2) = Normalise(dXdNu(1:2,2),err,error)
+      IF(err/=0) GOTO 999
+
+    ELSE
+      CALL FlagError("Geometry interpolated point metrics is not associated.",err,error,*999)
+    ENDIF
+        
+    CALL Exits("CoordinateMaterialSystemCalculatedXdNu2D")
+    RETURN
+999 CALL Errors("CoordinateMaterialSystemCalculatedXdNu2D",err,error)
+    CALL Exits("CoordinateMaterialSystemCalculatedXdNu2D")
+    RETURN 1
+  END SUBROUTINE CoordinateMaterialSystemCalculatedXdNu2D
 
   !
   !================================================================================================================================
   !
 
-!>Calculates transformation between spatial CS and rotated refernce orthogonal material CS in 2D space
-  SUBROUTINE COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D(GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT,DXDNU, &
-    & ERR,ERROR,*)
+  !>Calculates transformation between spatial CS and rotated reference orthogonal material CS in 3D space
+  SUBROUTINE CoordinateMaterialSystemCalculatedXdNu3D(geometricInterpPointMetrics,angle,dXdNu,err,error,*)
 
     !Argument variables
-    TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT
-    REAL(DP),INTENT(OUT) :: DXDNU(2,2)
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(FIELD_INTERPOLATED_POINT_METRICS_TYPE), POINTER :: geometricInterpPointMetrics !<The geometric interpolated point metrics at the point to calculate dXdNu at. 
+    REAL(DP), INTENT(IN) :: angle(:) !<angles(fibreIdx). The fibre, imbrication and sheet (in radians) 
+    REAL(DP), INTENT(OUT) :: dXdNu(:,:) !<dXdNu(coordinateIdx,coordinateIdx). On exit, the dXdNu tensor.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: derivative_idx
-    REAL(DP) :: ANGLE,DXDNUR(2,2),DXDXI(2,2),R(2,2),MAGNITUDE
-
-    CALL ENTERS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D",ERR,ERROR,*999)
-
-    derivative_idx=PARTIAL_DERIVATIVE_FIRST_DERIVATIVE_MAP(1) !2,4,7
-    DXDXI(1,1)=GEOMETRIC_INTERPOLATED_POINT%VALUES(1,derivative_idx) !dx1/dxi1
-    DXDXI(2,1)=GEOMETRIC_INTERPOLATED_POINT%VALUES(2,derivative_idx) !dx2/dxi1
-
-    !First calculate reference material CS
-    !reference material direction 1.
-    DXDNUR(:,1) = [ DXDXI(1,1),DXDXI(2,1) ]
-
-    ! Compute (normalised) vector orthogonal to material direction 1 to form material direction 2
-    DXDNUR(:,2) = [ -1*DXDNUR(2,1),DXDNUR(1,1) ]
-
-    MAGNITUDE = L2NORM(DXDNUR(:,1))
-    DXDNUR(1,1) = DXDNUR(1,1)/MAGNITUDE
-    DXDNUR(2,1) = DXDNUR(2,1)/MAGNITUDE
-    MAGNITUDE = L2NORM(DXDNUR(:,2))
-    DXDNUR(1,2) = DXDNUR(1,2)/MAGNITUDE
-    DXDNUR(2,2) = DXDNUR(2,2)/MAGNITUDE
-
-    ANGLE = FIBRE_INTERPOLATED_POINT%VALUES(1,1)
-
-    !Rotate by multiply with rotation matrix
-    R(:,1) = [ COS(ANGLE),-SIN(ANGLE) ]
-    R(:,2) = [ SIN(ANGLE),COS(ANGLE) ]
-
-    CALL MATRIX_PRODUCT(R,DXDNUR,DXDNU,ERR,ERROR,*999)
-
-    MAGNITUDE = L2NORM(DXDNU(:,1))
-    DXDNU(1,1) = DXDNU(1,1)/MAGNITUDE
-    DXDNU(2,1) = DXDNU(2,1)/MAGNITUDE
-
-    MAGNITUDE = L2NORM(DXDNU(:,2))
-    DXDNU(1,2) = DXDNU(1,2)/MAGNITUDE
-    DXDNU(2,2) = DXDNU(2,2)/MAGNITUDE
-
-    CALL EXITS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D")
-    RETURN
-999 CALL ERRORS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D",ERR,ERROR)
-    CALL EXITS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D")
-    RETURN 1
-  END SUBROUTINE COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_2D
-
-  !
-  !================================================================================================================================
-  !
-
-!>Calculates transformation between spatial CS and rotated refernce orthogonal material CS in 3D space
-  SUBROUTINE COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_3D(GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT,DXDNU, &
-    & ERR,ERROR,*)
-
-    !Argument variables
-    TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: GEOMETRIC_INTERPOLATED_POINT,FIBRE_INTERPOLATED_POINT
-    REAL(DP),INTENT(OUT) :: DXDNU(3,3)
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    INTEGER(INTG) :: derivative_idx,fibre_idx,geometric_idx,idx1,idx2,xi_idx
-    INTEGER(INTG) :: NUMBER_OF_GEOMETRIC_COMPONENTS,NUMBER_OF_FIBRE_COMPONENTS,NUMBER_OF_XI_COORDS 
-    INTEGER(INTG) :: vector(3) = (/1,2,3/)
-    REAL(DP) :: ANGLE(3),DXDNU1(3,3),DXDNU2(3,3),DXDNU3(3,3),DXDNUR(3,3),DXDXI(3,3),F(3),G(3),H(3),Ra(3,3),Rb(3,3)
+    REAL(DP) :: angles(3),dXdNu2(3,3),dXdNu3(3,3),dXdNuR(3,3),f(3),g(3),h(3),Ra(3,3),Rb(3,3)
     
-    CALL ENTERS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE",ERR,ERROR,*999)
+    CALL Enters("CoordinateMaterialSystemCalculatedXdNu3D",err,error,*999)
     
-    !initialse arrays
-    DO idx1=1,3
-      ANGLE(idx1)=0.0_DP
-      DO idx2=1,3
-        DXDNU(idx1,idx2)=0.0_DP
-        DXDXI(idx1,idx2)=0.0_DP
-      ENDDO
-    ENDDO
+    IF(ASSOCIATED(geometricInterpPointMetrics)) THEN
 
-    NUMBER_OF_GEOMETRIC_COMPONENTS=GEOMETRIC_INTERPOLATED_POINT%INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS 
-    NUMBER_OF_FIBRE_COMPONENTS=FIBRE_INTERPOLATED_POINT%INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS    
-    NUMBER_OF_XI_COORDS=GEOMETRIC_INTERPOLATED_POINT%interpolation_parameters%bases(1)%ptr%number_of_xi
-    
-    DO geometric_idx=1,NUMBER_OF_GEOMETRIC_COMPONENTS 
-      DO xi_idx=1,NUMBER_OF_XI_COORDS
-        derivative_idx=PARTIAL_DERIVATIVE_FIRST_DERIVATIVE_MAP(xi_idx) !2,4,7      
-        DXDXI(geometric_idx,xi_idx)=GEOMETRIC_INTERPOLATED_POINT%VALUES(geometric_idx,derivative_idx) !dx/dxi
-      ENDDO
-    ENDDO
+      !Calculate fibre, imbrication and sheet angles (allowing for missing angles)
+      angles=0.0_DP
+      angles(1:SIZE(angle,1))=angle(1:SIZE(angle,1))
+      
+      !First calculate reference material CS
+      f(1:3)=geometricInterpPointMetrics%DX_DXI(1:3,1) !reference material direction 1.
+      CALL CrossProduct(geometricInterpPointMetrics%DX_DXI(1:3,1),geometricInterpPointMetrics%DX_DXI(1:3,2),h,err,error,*999) !reference material direction 3.    
+      CALL CrossProduct(h,f,g,err,error,*999) !reference material direction 2.      
 
-    DO fibre_idx=1,NUMBER_OF_FIBRE_COMPONENTS    
-      ANGLE(fibre_idx)=FIBRE_INTERPOLATED_POINT%VALUES(fibre_idx,1) !fibre, imbrication and sheet. All in radians
-    ENDDO
-
-    !First calculate reference material CS
-    DO geometric_idx=1,NUMBER_OF_GEOMETRIC_COMPONENTS
-      F(geometric_idx)=DXDXI(geometric_idx,1) !reference material direction 1.
-    ENDDO
-    CALL CROSS_PRODUCT(DXDXI(vector,1),DXDXI(vector,2),H,ERR,ERROR,*999) !reference material direction 3.    
-    CALL CROSS_PRODUCT(H,F,G,ERR,ERROR,*999) !reference material direction 2.      
-
-    DO geometric_idx=1,NUMBER_OF_GEOMETRIC_COMPONENTS
-      DXDNUR(geometric_idx,1)=F(geometric_idx)/L2NORM(F) 
-      DXDNUR(geometric_idx,2)=G(geometric_idx)/L2NORM(G)      
-      DXDNUR(geometric_idx,3)=H(geometric_idx)/L2NORM(H)        
-    ENDDO
-
-    !FIBRE ANGLE(alpha) - ANGLE(1) 
-    !In order to rotate reference material CS by alpha(fibre angle) in anti-clockwise  
-    !direction about its axis 3, following steps are performed.
-    !(a) first align reference material direction 3 with Z(spatial) axis by rotating the ref matrial CS. 
-    !(b) then rotate the aligned material CS by alpha about Z axis in anti-clockwise direction
-    !(c) apply the inverse of step(a) to the CS in (b)
-    !It can be shown that steps (a),(b) and (c) are equivalent to post-multiplying
-    !rotation in (a) by rotation in (b). i.e. Ra*Rb  
-       
-    !The normalised reference material CS contains the transformation(rotaion) between 
-    !the spatial CS -> reference material CS. i.e. Ra 
-    DO idx1=1,3
-      DO idx2=1,3
-        Ra(idx1,idx2)=DXDNUR(idx1,idx2)  
-      ENDDO
-    ENDDO
-
-    !Initialise rotation matrix Rb
-    DO idx1=1,3
-      DO idx2=1,3
-        Rb(idx1,idx2)=0.0_DP 
-        IF (idx1==idx2) THEN
-          Rb(idx1,idx2)=1.0_DP  
-        ENDIF
-      ENDDO
-    ENDDO    
-    !Populate rotation matrix Rb about axis 3 (Z)
-    Rb(1,1)=cos(ANGLE(1))
-    Rb(1,2)=-sin(ANGLE(1))
-    Rb(2,1)=sin(ANGLE(1))
-    Rb(2,2)=cos(ANGLE(1))
-    
-    CALL MATRIX_PRODUCT(Ra,Rb,DXDNU3,ERR,ERROR,*999)  
-
-
-    !IMBRICATION ANGLE (beta) - ANGLE(2)     
-    !In order to rotate alpha-rotated material CS by beta(imbrication angle) in anti-clockwise  
-    !direction about its new axis 2, following steps are performed.
-    !(a) first align new material direction 2 with Y(spatial) axis by rotating the new matrial CS. 
-    !(b) then rotate the aligned CS by beta about Y axis in anti-clockwise direction
-    !(c) apply the inverse of step(a) to the CS in (b)
-    !As mentioned above, (a),(b) and (c) are equivalent to post-multiplying
-    !rotation in (a) by rotation in (b). i.e. Ra*Rb  
+      dXdNuR(1:3,1)=Normalise(f,err,error)
+      IF(err/=0) GOTO 999
+      dXdNuR(1:3,2)=Normalise(g,err,error)
+      IF(err/=0) GOTO 999
+      dXdNuR(1:3,3)=Normalise(h,err,error)
+      IF(err/=0) GOTO 999
+      
+      !FIBRE ANGLE(alpha) - angles(1) 
+      !In order to rotate reference material CS by alpha(fibre angle) in anti-clockwise  
+      !direction about its axis 3, following steps are performed.
+      !(a) first align reference material direction 3 with Z(spatial) axis by rotating the ref material CS. 
+      !(b) then rotate the aligned material CS by alpha about Z axis in anti-clockwise direction
+      !(c) apply the inverse of step(a) to the CS in (b)
+      !It can be shown that steps (a),(b) and (c) are equivalent to post-multiplying
+      !rotation in (a) by rotation in (b). i.e. Ra*Rb  
+      
+      !The normalised reference material CS contains the transformation(rotation) between 
+      !the spatial CS -> reference material CS. i.e. Ra
+      Ra=dXdNuR
         
-    !DXNU3 contains the transformation(rotaion) between 
-    !the spatial CS -> alpha-rotated reference material CS. i.e. Ra 
-    DO idx1=1,3
-      DO idx2=1,3
-        Ra(idx1,idx2)=DXDNU3(idx1,idx2)  
-      ENDDO
-    ENDDO   
-    !Initialise rotation matrix Rb
-    DO idx1=1,3
-      DO idx2=1,3
-        Rb(idx1,idx2)=0.0_DP 
-        IF (idx1==idx2) THEN
-          Rb(idx1,idx2)=1.0_DP  
-        ENDIF
-      ENDDO
-    ENDDO    
-    !Populate rotation matrix Rb about axis 2 (Y). Note the sign change
-    Rb(1,1)=cos(ANGLE(2))
-    Rb(1,3)=sin(ANGLE(2))
-    Rb(3,1)=-sin(ANGLE(2))
-    Rb(3,3)=cos(ANGLE(2))
-
-    CALL MATRIX_PRODUCT(Ra,Rb,DXDNU2,ERR,ERROR,*999)  
-
-
-    !SHEET ANGLE (gamma) - ANGLE(3)    
-    !In order to rotate alpha-beta-rotated material CS by gama(sheet angle) in anti-clockwise  
-    !direction about its new axis 1, following steps are performed.
-    !(a) first align new material direction 1 with X(spatial) axis by rotating the new matrial CS. 
-    !(b) then rotate the aligned CS by gama about X axis in anti-clockwise direction
-    !(c) apply the inverse of step(a) to the CS in (b)
-    !Again steps (a),(b) and (c) are equivalent to post-multiplying
-    !rotation in (a) by rotation in (b). i.e. Ra*Rb  
+      !Initialise rotation matrix Rb
+      CALL IdentityMatrix(Rb,err,error,*999)
+      !Populate rotation matrix Rb about axis 3 (Z)
+      Rb(1,1)=COS(angles(1))
+      Rb(1,2)=-1.0_DP*SIN(angles(1))
+      Rb(2,1)=SIN(angles(1))
+      Rb(2,2)=COS(angles(1))
         
-    !DXNU2 contains the transformation(rotaion) between 
-    !the spatial CS -> alpha-beta-rotated reference material CS. i.e. Ra 
-    DO idx1=1,3
-      DO idx2=1,3
-        Ra(idx1,idx2)=DXDNU2(idx1,idx2)  
-      ENDDO
-    ENDDO   
-    !Initialise rotation matrix Rb
-    DO idx1=1,3
-      DO idx2=1,3
-        Rb(idx1,idx2)=0.0_DP 
-        IF (idx1==idx2) THEN
-          Rb(idx1,idx2)=1.0_DP  
-        ENDIF
-      ENDDO
-    ENDDO    
-    !Populate rotation matrix Rb about axis 1 (X). 
-    Rb(2,2)=cos(ANGLE(3))
-    Rb(2,3)=-sin(ANGLE(3))
-    Rb(3,2)=sin(ANGLE(3))
-    Rb(3,3)=cos(ANGLE(3))
+      CALL MatrixProduct(Ra,Rb,dXdNu3,err,error,*999)  
 
-    CALL MATRIX_PRODUCT(Ra,Rb,DXDNU1,ERR,ERROR,*999)  
+      !IMBRICATION ANGLE (beta) - angles(2)     
+      !In order to rotate alpha-rotated material CS by beta(imbrication angle) in anti-clockwise  
+      !direction about its new axis 2, following steps are performed.
+      !(a) first align new material direction 2 with Y(spatial) axis by rotating the new material CS. 
+      !(b) then rotate the aligned CS by beta about Y axis in anti-clockwise direction
+      !(c) apply the inverse of step(a) to the CS in (b)
+      !As mentioned above, (a),(b) and (c) are equivalent to post-multiplying
+      !rotation in (a) by rotation in (b). i.e. Ra*Rb  
+      
+      !dXdNu3 contains the transformation(rotation) between 
+      !the spatial CS -> alpha-rotated reference material CS. i.e. Ra
+      Ra=dXdNu3
+      !Initialise rotation matrix Rb
+      CALL IdentityMatrix(Rb,err,error,*999)
+      !Populate rotation matrix Rb about axis 2 (Y). Note the sign change
+      Rb(1,1)=COS(angles(2))
+      Rb(1,3)=SIN(angles(2))
+      Rb(3,1)=-1.0_DP*SIN(angles(2))
+      Rb(3,3)=COS(angles(2))
+        
+      CALL MatrixProduct(Ra,Rb,dXdNu2,err,error,*999)  
 
-    DO idx1=1,3
-      DO idx2=1,3
-        DXDNU(idx1,idx2)=DXDNU1(idx1,idx2)  
-      ENDDO
-    ENDDO   
+      !SHEET ANGLE (gamma) - angles(3)    
+      !In order to rotate alpha-beta-rotated material CS by gama(sheet angle) in anti-clockwise  
+      !direction about its new axis 1, following steps are performed.
+      !(a) first align new material direction 1 with X(spatial) axis by rotating the new material CS. 
+      !(b) then rotate the aligned CS by gama about X axis in anti-clockwise direction
+      !(c) apply the inverse of step(a) to the CS in (b)
+      !Again steps (a),(b) and (c) are equivalent to post-multiplying
+      !rotation in (a) by rotation in (b). i.e. Ra*Rb  
+      
+      !dXdNu2 contains the transformation(rotation) between 
+      !the spatial CS -> alpha-beta-rotated reference material CS. i.e. Ra
+      Ra=dXdNu2
+      !Initialise rotation matrix Rb
+      CALL IdentityMatrix(Rb,err,error,*999)
+      !Populate rotation matrix Rb about axis 1 (X). 
+      Rb(2,2)=COS(angles(3))
+      Rb(2,3)=-1.0_DP*SIN(angles(3))
+      Rb(3,2)=SIN(angles(3))
+      Rb(3,3)=COS(angles(3))
+      
+      CALL MatrixProduct(Ra,Rb,dXdNu,err,error,*999)  
+      
+    ELSE
+      CALL FlagError("Geometry interpolated point metrics is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL Exits("CoordinateMaterialSystemCalculatedXdNu3D")
 
-    CALL EXITS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_3D")
     RETURN
-999 CALL ERRORS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_3D",ERR,ERROR)
-    CALL EXITS("COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_3D")
+999 CALL Errors("CoordinateMaterialSystemCalculatedXdNu3D",err,error)
+    CALL Exits("CoordinateMaterialSystemCalculatedXdNu3D")
     RETURN 1
-  END SUBROUTINE COORDINATE_MATERIAL_COORDINATE_SYSTEM_CALCULATE_3D
+  END SUBROUTINE CoordinateMaterialSystemCalculatedXdNu3D
 
   !
   !================================================================================================================================
