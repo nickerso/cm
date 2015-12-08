@@ -906,11 +906,12 @@ static int FieldExport_File_OpenSession( const char *const name, int * const han
 
     session->fileSession.error = FIELD_EXPORT_NO_ERROR;
 
-    if( ( session->fileSession.file == NULL )
 #ifdef USE_HDF5
-        || ( session->fileSession.hd5Handle < 0 )
+    if( ( session->fileSession.file == NULL )
+        || ( session->fileSession.hd5Handle < 0 ) )
+#else
+    if( session->fileSession.file == NULL )
 #endif
-        )
     {
         if( session->fileSession.file != NULL )
         {

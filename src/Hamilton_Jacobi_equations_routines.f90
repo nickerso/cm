@@ -1691,6 +1691,7 @@ CONTAINS
     CHARACTER (LEN=300) :: STRING
         
 !    ENTERS("GENERATE_STATUS_MASK",Err,Error,*999)
+
     
 ! """""""""""""""""""""""""""""""""""INPUT OF TABC FORMAT""""""""""""""""""""""""""""""
     IF (INPUT_FILE_FORMAT .EQ. "TABC") THEN 

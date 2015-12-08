@@ -1,8 +1,8 @@
 /* Python specific typemaps for SWIG */
-%module opencmiss
+%module iron_python
 %{
 #include "stdlib.h"
-#include "opencmiss/iron.h"
+#include "iron.h"
 #define MAX_OUTPUT_STRING_SIZE 300
 %}
 
@@ -219,4 +219,4 @@
     free($3);
 }
 
-%include "opencmiss.i"
+%include "iron_generated.i"

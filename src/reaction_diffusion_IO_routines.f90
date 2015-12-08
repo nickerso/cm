@@ -54,11 +54,20 @@ MODULE REACTION_DIFFUSION_IO_ROUTINES
  USE INPUT_OUTPUT 
  USE KINDS   
  USE MESH_ROUTINES
- USE MPI
 
-#include "macros.h"  
+#ifndef NOMPIMOD
+  USE MPI
+#endif
+
+#include "macros.h"
 
   IMPLICIT NONE
+
+  PRIVATE
+
+#ifdef NOMPIMOD
+#include "mpif.h"
+#endif
 
   PUBLIC REACTION_DIFFUSION_IO_WRITE_CMGUI
 

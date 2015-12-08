@@ -71,7 +71,9 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
   USE MATHS
   USE MATRIX_VECTOR
   USE MESH_ROUTINES
+#ifndef NOMPIMOD
   USE MPI
+#endif
   USE NODE_ROUTINES
   USE PROBLEM_CONSTANTS
   USE STREE_EQUATION_ROUTINES
@@ -85,6 +87,10 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
   IMPLICIT NONE
 
   PRIVATE
+  
+#ifdef NOMPIMOD
+#include "mpif.h"
+#endif
 
   PUBLIC NAVIER_STOKES_ANALYTIC_FUNCTIONS_EVALUATE
   
@@ -11149,7 +11155,7 @@ CONTAINS
             END IF
 
             ! Stabilisation term to correct for possible retrograde flow divergence.
-            ! See: Moghadam et al 2011 “A comparison of outlet boundary treatments for prevention of backflow divergence..." and
+            ! See: Moghadam et al 2011 A comparison of outlet boundary treatments for prevention of backflow divergence..." and
             !      Ismail et al 2014 "A stable approach for coupling multidimensional cardiovascular and pulmonary networks..."
             ! Note: beta is a relative scaling factor 0 <= beta <= 1; default 1.0
             stabilisationTerm = 0.0_DP

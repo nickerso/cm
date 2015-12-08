@@ -653,7 +653,7 @@ MODULE CmissPetsc
       PetscInt lastrow
       PetscInt ierr
     END SUBROUTINE MatGetOwnershipRange
-    
+
     SUBROUTINE MatGetRow(A,row,ncols,cols,values,ierr)
       Mat A
       PetscInt row
@@ -1616,7 +1616,6 @@ MODULE CmissPetsc
     & Petsc_MatSetValuesLocal,Petsc_MatView,Petsc_MatZeroEntries
 
   !Matrix coloring routines and constants
-  
   PUBLIC PETSC_MATCOLORING_NATURAL,PETSC_MATCOLORING_SL,PETSC_MATCOLORING_LF,PETSC_MATCOLORING_ID,PETSC_MATCOLORING_GREEDY, &
     & PETSC_MATCOLORING_JP
 
@@ -3658,10 +3657,8 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
   !>Buffer routine to the PETSc MatSetValueLocal routine.
   SUBROUTINE Petsc_MatSetValueLocal(a,row,col,VALUE,insertMode,err,error,*)
-
     !Argument Variables
     TYPE(PetscMatType), INTENT(INOUT) :: a !<The matrix to set the values of
     INTEGER(INTG), INTENT(IN) :: row !<The row index
@@ -3686,9 +3683,8 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("Petsc_MatSetValueLocal",err,error)
     RETURN 1
-    
   END SUBROUTINE Petsc_MatSetValueLocal
-  
+
   !
   !================================================================================================================================
   !
@@ -4725,7 +4721,6 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-
     ENTERS("Petsc_SnesGetFunction",err,error,*999)
 
     CALL SNESGetFunction(snes%snes,f%vec,PETSC_NULL_FUNCTION,PETSC_NULL_INTEGER,err)
@@ -5480,10 +5475,9 @@ CONTAINS
     !Local Variables
 
     ENTERS("Petsc_SnesLineSearchInitialise",err,error,*999)
-
     lineSearch%snesLineSearch=PETSC_NULL_OBJECT
-
     EXITS("Petsc_SnesLineSearchInitialise")
+
     RETURN
 999 ERRORSEXITS("Petsc_SnesLineSearchInitialise",err,error)
     RETURN 1
@@ -5723,7 +5717,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
   !>Buffer routine to the PETSc SNESLineSearchSetOrder routine.
   SUBROUTINE Petsc_SnesLineSearchSetOrder(lineSearch,lineSearchOrder,err,error,*)
 
@@ -5759,7 +5752,6 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("Petsc_SnesLineSearchSetOrder",err,error)
     RETURN 1
-    
   END SUBROUTINE Petsc_SnesLineSearchSetOrder
 
   !
