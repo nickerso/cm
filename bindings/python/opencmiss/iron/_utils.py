@@ -64,14 +64,14 @@ def wrap_cmiss_routine(routine, args=None):
     else:
         status = r
         return_val = None
-    if status != _@IRON_PYTHON_MODULE@.cvar.CMISS_NO_ERROR:
-        if status == _@IRON_PYTHON_MODULE@.cvar.CMISS_POINTER_IS_NULL:
-            raise CMISSError("CMISS type pointer is null")
-        elif status == _@IRON_PYTHON_MODULE@.cvar.CMISS_POINTER_NOT_NULL:
-            raise CMISSError("CMISS type pointer is not null")
-        elif status == _@IRON_PYTHON_MODULE@.cvar.CMISS_COULD_NOT_ALLOCATE_POINTER:
+    if status != _@IRON_PYTHON_MODULE@.cvar.CMFE_NO_ERROR:
+        if status == _@IRON_PYTHON_MODULE@.cvar.CMFE_POINTER_IS_NULL:
+            raise CMISSError("CMFE type pointer is null")
+        elif status == _@IRON_PYTHON_MODULE@.cvar.CMFE_POINTER_NOT_NULL:
+            raise CMISSError("CMFE type pointer is not null")
+        elif status == _@IRON_PYTHON_MODULE@.cvar.CMFE_COULD_NOT_ALLOCATE_POINTER:
             raise CMISSError("Could not allocate pointer")
-        elif status == _@IRON_PYTHON_MODULE@.cvar.CMISS_ERROR_CONVERTING_POINTER:
+        elif status == _@IRON_PYTHON_MODULE@.cvar.CMFE_ERROR_CONVERTING_POINTER:
             raise CMISSError("Error converting pointer")
         else:
             raise CMISSError(_@IRON_PYTHON_MODULE@.CMISSExtractErrorMessage()[1])
