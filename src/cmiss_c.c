@@ -59,6 +59,7 @@ void cmfe_SetFatalHandler(void);
 void cmfe_InitFatalHandler(void);
 
 /* Internal functions */
+/*
 static void cmfe_FatalHandler(int sig
 #if defined (sun)
 	,siginfo_t *sip,
@@ -71,7 +72,7 @@ static void cmfe_FatalHandler(int sig
 		);
 	#endif
 #endif
-
+*/
 /* Static variables */
 
 #ifdef __MINGW32__
