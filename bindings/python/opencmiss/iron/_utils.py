@@ -74,5 +74,5 @@ def wrap_cmiss_routine(routine, args=None):
         elif status == _@IRON_PYTHON_MODULE@.cvar.CMFE_ERROR_CONVERTING_POINTER:
             raise CMISSError("Error converting pointer")
         else:
-            raise CMISSError(_@IRON_PYTHON_MODULE@.CMISSExtractErrorMessage()[1])
+            raise CMISSError(_@IRON_PYTHON_MODULE@.cmfe_ExtractErrorMessage()[1])
     return return_val
